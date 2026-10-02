@@ -280,6 +280,10 @@ class Application(tk.Tk):
         test_btn = ttk.Button(buttons, text="测试连接", command=test)
         test_btn.pack(side="left")
         ttk.Button(buttons, text="保存", command=save).pack(side="right")
+        win.update_idletasks()
+        x = self.winfo_rootx() + (self.winfo_width() - win.winfo_width()) // 2
+        y = self.winfo_rooty() + (self.winfo_height() - win.winfo_height()) // 2
+        win.geometry(f"+{max(x, 0)}+{max(y, 0)}")
         win.grab_set()
 
     def _show_about(self):
@@ -353,8 +357,7 @@ class Application(tk.Tk):
         packer_exe = find_downloader_exe(get_base_path())
         results = {
             'app': check_target(APP_REPO, APP_VERSION),
-            'packer': {'status': 'no_local', 'latest': '随本分支应用整包更新',
-                       'local': get_local_packer_version(packer_exe), 'url': None},
+            'packer': check_target(PACKER_REPO, get_local_packer_version(packer_exe)),
         }
         self._update_results = results
         self._update_checking = False
@@ -395,15 +398,15 @@ class Application(tk.Tk):
 
         local_packer = get_local_packer_version(find_downloader_exe(get_base_path()))
         self._upd_labels = {}
-        rows = (('app', '主程式', APP_VERSION),
-                ('packer', '核心下载器', f"v{local_packer}" if local_packer else "无法判定"))
+        rows = (('app', '主程序（本分支）', APP_VERSION),
+                ('packer', '核心下载器（GUI 版）', f"v{local_packer}" if local_packer else "无法判定"))
         for i, (key, name, current) in enumerate(rows):
             base = i * 2
             pad_top = (0, 0) if i == 0 else (10, 0)
             ttk.Label(frm, text=name, font=("Microsoft YaHei", 10, "bold")).grid(
                 row=base, column=0, sticky="w", pady=pad_top)
             ttk.Label(frm, text=current).grid(row=base, column=1, sticky="w", padx=(15, 0), pady=pad_top)
-            ttk.Label(frm, text="最新版本").grid(row=base + 1, column=0, sticky="w")
+            ttk.Label(frm, text="上游最新版本" if key == 'packer' else "最新版本").grid(row=base + 1, column=0, sticky="w")
             latest = ttk.Label(frm, text="检查中…", foreground="gray")
             latest.grid(row=base + 1, column=1, sticky="w", padx=(15, 0))
             link = ttk.Label(frm, text="前往下载", foreground="#0066CC", cursor="hand2")
@@ -416,7 +419,9 @@ class Application(tk.Tk):
         self._upd_warn.grid_remove()
 
         btnf = ttk.Frame(frm)
-        btnf.grid(row=5, column=0, columnspan=3, sticky="e", pady=(15, 0))
+        ttk.Label(frm, text="核心显示上游版本供参考；代理和单任务修复需要 GUI 版核心。\n请下载本分支整包更新，不要用上游交互版直接覆盖核心。",
+                  wraplength=440, foreground="gray").grid(row=5, column=0, columnspan=3, sticky="w", pady=(10, 0))
+        btnf.grid(row=6, column=0, columnspan=3, sticky="e", pady=(15, 0))
         self._upd_recheck_btn = ttk.Button(btnf, text="重新检查",
                                            command=lambda: self._show_update_window(recheck=True))
         self._upd_recheck_btn.pack(side="left", padx=(0, 5))
@@ -454,6 +459,9 @@ class Application(tk.Tk):
             elif status == 'no_local':
                 widgets['latest'].config(text=r['latest'] or "—", foreground="black")
                 widgets['link'].grid_remove()
+            elif status == 'no_release':
+                widgets['latest'].config(text="尚无公开发布版本", foreground="gray")
+                widgets['link'].grid_remove()
             else:
                 widgets['latest'].config(text="—", foreground="gray")
                 widgets['link'].grid_remove()
@@ -462,7 +470,9 @@ class Application(tk.Tk):
         if checking:
             warn = ""
         elif 'ratelimit' in statuses:
-            warn = "查询过于频繁，请稍后再试。"
+            warn = "GitHub API 配额已用尽或被限流，发布订阅也未能读取。代理出口可能共享配额，请稍后重试。"
+        elif 'forbidden' in statuses:
+            warn = "GitHub 拒绝访问（HTTP 403），并非一定是操作频繁。请检查代理或稍后重试。"
         elif 'network' in statuses:
             warn = "无法取得更新资讯，请检查网路连线。"
         else:

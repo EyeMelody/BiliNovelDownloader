@@ -1,4 +1,7 @@
 import re
+import time
+import xml.etree.ElementTree as ET
+from urllib.parse import unquote
 from typing import Optional
 
 import requests
@@ -7,7 +10,8 @@ from network import request_get
 from core import USER_AGENT
 
 APP_REPO = 'EyeMelody/BiliNovelDownloader'
-PACKER_REPO = APP_REPO  # 核心必须随本分支整包更新
+PACKER_REPO = 'Montaro2017/bili_novel_packer'
+_release_cache = {}
 
 _PACKER_VERSION_PATTERN = re.compile(r'bili_novel_packer-(\d+(?:\.\d+)+)', re.IGNORECASE)
 
@@ -49,38 +53,65 @@ def check_target(repo: str, local: Optional[str]) -> dict:
       status  'update' 有新版 / 'latest' 已是最新 / 'no_local' 本地版本无法判定
               / 'ratelimit' API 限额 / 'network' 其他网路或解析错误
     """
-    result = {'local': local, 'latest': None, 'url': None}
-    headers = {'User-Agent': USER_AGENT, 'Accept': 'application/vnd.github+json'}
-    try:
-        resp = request_get(f'https://api.github.com/repos/{repo}/releases/latest',
-                            headers=headers, timeout=10)
-        if resp.status_code == 404:
-            # /releases/latest 只认正式版，bili_novel_packer 把所有 release 都标成 pre-release 会回 404，改列清单取最新的非草稿版
-            resp = request_get(f'https://api.github.com/repos/{repo}/releases?per_page=10',
-                                headers=headers, timeout=10)
-            if resp.status_code in (403, 429):
-                result['status'] = 'ratelimit'
-                return result
-            resp.raise_for_status()
-            data = next((item for item in resp.json() if not item.get('draft')), {})
-        else:
-            if resp.status_code in (403, 429):
-                result['status'] = 'ratelimit'
-                return result
-            resp.raise_for_status()
-            data = resp.json()
-        result['latest'] = data.get('tag_name') or None
-        result['url'] = data.get('html_url') or f'https://github.com/{repo}/releases'
-    except Exception:
-        result['status'] = 'network'
+    cached = _release_cache.get(repo)
+    if cached and time.monotonic() - cached[0] < 300:
+        data = dict(cached[1])
+    else:
+        data = _fetch_release(repo)
+        # 缓存成功结果；失败只缓存 30 秒，避免反复点击增加请求。
+        ttl = 300 if data.get('latest') or data.get('status') == 'no_release' else 30
+        _release_cache[repo] = (time.monotonic() - (300 - ttl), dict(data))
+    result = dict(data, local=local)
+    if not result.get('latest'):
         return result
-
-    if result['latest'] is None:
-        result['status'] = 'network'
     elif parse_version(local) is None:
         result['status'] = 'no_local'
     elif is_newer(result['latest'], local):
         result['status'] = 'update'
     else:
         result['status'] = 'latest'
+    return result
+
+
+def _fetch_release(repo):
+    result = {'latest': None, 'url': f'https://github.com/{repo}/releases', 'status': 'network'}
+    headers = {'User-Agent': USER_AGENT, 'Accept': 'application/vnd.github+json'}
+    try:
+        resp = request_get(f'https://api.github.com/repos/{repo}/releases/latest', headers=headers, timeout=10)
+        listing = resp.status_code == 404
+        if listing:
+            resp = request_get(f'https://api.github.com/repos/{repo}/releases?per_page=10', headers=headers, timeout=10)
+        if resp.status_code in (403, 429):
+            limited = (resp.status_code == 429 or resp.headers.get('X-RateLimit-Remaining') == '0'
+                       or resp.headers.get('Retry-After') is not None
+                       or 'rate limit' in resp.text.lower())
+            result['status'] = 'ratelimit' if limited else 'forbidden'
+        else:
+            resp.raise_for_status()
+            data = next((x for x in resp.json() if not x.get('draft')), {}) if listing else resp.json()
+            if not data:
+                return dict(result, status='no_release')
+            if data.get('tag_name'):
+                return dict(result, latest=data['tag_name'], url=data.get('html_url') or result['url'])
+    except (requests.RequestException, ValueError, TypeError, AttributeError):
+        pass
+    # 公开发布订阅不使用 REST API 配额；包含上游预发布版本。
+    try:
+        resp = request_get(f'https://github.com/{repo}/releases.atom', headers={'User-Agent': USER_AGENT}, timeout=10)
+        resp.raise_for_status()
+        root = ET.fromstring(resp.content)
+        ns = {'a': 'http://www.w3.org/2005/Atom'}
+        if root.tag != '{http://www.w3.org/2005/Atom}feed':
+            return result
+        entries = root.findall('a:entry', ns)
+        if not entries:
+            return dict(result, status='no_release')
+        prefix = f'https://github.com/{repo}/releases/tag/'
+        for entry in entries:
+            for link in entry.findall('a:link', ns):
+                url = link.get('href', '')
+                if url.lower().startswith(prefix.lower()):
+                    return dict(result, latest=unquote(url[len(prefix):]), url=url, source='feed')
+    except (requests.RequestException, ET.ParseError, ValueError):
+        pass
     return result
