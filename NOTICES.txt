@@ -1,5 +1,8 @@
-本軟體的小說下載功能由 bili_novel_packer 提供（作者 Montaro2017，MIT License），以子程序方式呼叫，未修改其原始碼
+本软件基于 allen3206/BiliNovelDownloader（MIT License）。
+小说下载功能基于 Montaro2017/bili_novel_packer 0.2.49（MIT License）。
+本分支增加了单任务 JSON 入口和统一 HTTP 代理支持，保留上游抓取、排版实现。
 
-授權全文見 tools/LICENSE-bili_novel_packer.txt
+授权全文见 LICENSE.txt 和 tools/LICENSE-bili_novel_packer.txt。
 
-專案網址：https://github.com/Montaro2017/bili_novel_packer
+原项目：https://github.com/Montaro2017/bili_novel_packer
+本分支：https://github.com/EyeMelody/BiliNovelDownloader

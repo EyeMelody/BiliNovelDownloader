@@ -27,3 +27,8 @@ Thumbs.db
 note1
 note2
 .claude
+settings.json
+.test-runs/
+**/.dart_tool/
+**/.packages
+**/coverage/
