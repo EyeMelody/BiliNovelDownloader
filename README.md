@@ -1,57 +1,105 @@
-# 哔哩轻小说下载器：简体界面与代理版
+> 本项目为 [allen3206/BiliNovelDownloader](https://github.com/allen3206/BiliNovelDownloader) 的 fork 分支版本。
 
-基于 [allen3206/BiliNovelDownloader](https://github.com/allen3206/BiliNovelDownloader) 的 Windows 桌面分支。提供简体界面、HTTP 代理设置，以及对上游原版下载核心的交互适配。
+<p align="center">
+   <img src="./assets/icon.png" width="256" height="256" />
+</p>
 
-## 使用
+<h1 align="center">哔哩轻小说自动下载与繁化工具 (BiliNovelDownloader)</h1>
 
-1. 在 [Releases](https://github.com/EyeMelody/BiliNovelDownloader/releases) 下载 Windows 64 位 ZIP，完整解压。
-2. 双击 `BiliNovelDownloader.exe`；保留同目录 `tools` 文件夹，不需要安装 Python 或 Dart。
-3. 如需代理，打开菜单 **代理设置**，勾选启用，填写 `http://127.0.0.1:7890`，测试连接后保存。默认关闭，保存后记住选择；此选项仅作用于 GUI 请求。
-4. 输入小说网址或数字 ID，选择全部卷或指定范围（如 `1,3-5`），开始下载。
-5. 结果位于 `downloads/简体/书名` 和 `downloads/繁体/书名`。
+基于 [bili_novel_packer](https://github.com/Montaro2017/bili_novel_packer) 核心打造的图形化介面工具，专为 [哔哩轻小说](https://tw.linovelib.com/) 而设计。支援小说资讯预览、全自动下载及 EPUB 简繁转换。
 
-支持 `www/tw/m.linovelib.com` 和 `bilinovel.com/net` 网址；书籍预览会规范化为 `www.bilinovel.com` 手机站请求，以避免旧版固定访问繁体桌面站造成的兼容性问题。网站仍可能拒绝或限制请求，代理不能保证消除所有 403。
+## 预览
 
-## 本分支的修改
+<img width="952" height="732" alt="screenshot1" src="./assets/screenshots1.png" />
 
-- 界面、菜单、对话框和应用提示使用简体中文，书籍预览也转为简体。
-- GUI 的 HTTP/混合代理覆盖预览、目录、封面和更新检查，默认关闭。原版核心不接收 GUI 代理参数，其正文和插图下载保持原版网络行为；需要代理时请使用能正常运行原版核心的网络/TUN 环境。暂不支持 SOCKS、代理账号密码。
-- GUI 按原版核心实际提示逐项输入，并保持 stdin 打开；单卷跳过“合并”问题时，不会造成章节标题选项错位。
-- 原版核心完成后继续等待下一本是正常行为。GUI 在收到下一次链接提示后，核对打包完成次数、EPUB 数量与结构，再结束自己启动的核心进程。不会仅凭出现 EPUB 就判为成功。真正的停滞仍保留 15 分钟保护、6 小时总上限和取消操作。
-- 每次下载使用独立 `temp/job-*` 目录，保留源文件和失败日志，不清空历史任务。临时目录需要时可由用户手动整理。
-- 简体成品实际进行 OpenCC 转换，不再仅把源文本复制进名为“简体”的文件夹。目录和元数据一起转换，图片和资源路径保持原样。
+<img width="952" height="732" alt="screenshot2" src="./assets/screenshots2.png" />
 
-**v1.6.2 起使用上游原版核心。更新检查分别查询本分支应用和 Montaro2017/bili_novel_packer；将上游 Windows EXE 放入 tools 即可，优先选择版本号最高的非 GUI 核心。以后上游若改变交互提示，GUI 可能需要相应适配。**
+<img width="952" height="732" alt="screenshot3" src="./assets/screenshots3.png" />
 
-## 构建
+## 特色与功能
 
-使用 Windows x64 和 Python 3.12/3.13。无需编译 Dart 核心，直接下载上游原版发布文件。
+*   **图形介面**：贴上网址或数字 ID 即可预览小说资讯（封面、简介、目录）
+*   **简繁转换**：原站仅提供简体版，程式下载完成后自动透过 `opencc` 转换，同时输出简体与繁体两份 EPUB（含资料夹与档案名称），分别存放于 `downloads/简体/` 与 `downloads/繁体/`
+*   **即时状态追踪**：内建执行日志与进度提示，及时查看下载资讯、错误讯息
+*   **分卷下载**：可选下载 **全部范围** 或 **指定范围**（例如：`1, 3-5, 9`）
+*   **进阶整合选项**：可选择「合并选取的分卷为单一档案」，或是「在每章开头自动添加章节标题」
+*   **下载历史纪录**：自动储存近期载入过的小说网址，点击下拉选单即可重新载入
+*   **智慧快取机制**：书籍封面图片自动快取 24 小时，提升二次载入速度
 
-```powershell
-python -m pip install -r requirements.txt pyinstaller
-gh release download v0.2.49 --repo Montaro2017/bili_novel_packer --pattern '*x86_64-windows.exe' --dir tools
-./packaging/build_release.ps1
+## 如何使用
+
+**系统需求**：Windows 10 / 11（64 位元）
+
+1. 前往 [Releases 页面](https://github.com/EyeMelody/BiliNovelDownloader/releases) 下载最新的 `.zip` 压缩档
+2. 将下载的压缩档 **解压缩** 到电脑中（例如：桌面或 D 槽）
+3. 打开解压缩后的资料夹，会看到以下结构：
+   ```text
+   BiliNovelDownloader-...-windows-x64/
+   ├── BiliNovelDownloader.exe             (主程式)
+   ├── readme.txt                             (使用须知)
+   ├── LICENSE.txt
+   ├── NOTICES.txt
+   ├── THIRD_PARTY_LICENSES.txt
+   └── tools/
+       ├── bili_novel_packer-xxx-windows.exe  (核心下载器)
+       └── LICENSE-bili_novel_packer.txt
+   ```
+4. **双击 `BiliNovelDownloader.exe` 即可开始使用**
+
+下载完成后，档案会存放于以下结构：
+```text
+downloads/
+├── 简体/
+│   └── 书名/
+│       ├── 书名 第1卷.epub
+│       └── 书名 第2卷.epub
+└── 繁体/
+    └── 书名/
+        ├── 书名 第1卷.epub
+        └── 书名 第2卷.epub
 ```
 
-本版核心 SHA-256：`c78c4dc58ba88610c65dcd44c817e3d93b783296340c1b847835acf8e56bb4a3`。
-`vendor/packer` 仅保留前版源码供历史参考，不参与当前构建和运行。
+> **提醒：**
+> *   不要在未解压缩的 ZIP 档内直接执行程式
+> *   请务必保持 `exe` 主程式与 `tools` 资料夹在同一层目录下。如果想将捷径放在桌面，请对 `exe` 按右键选择「建立捷径」并移至桌面，切勿单独将 exe 档案移走
 
-打包脚本不会批量删除旧构建目录；若同名发行目录已经存在，会提示停止。
+## 授权与声明
 
-## 测试
+*   授权条款：[MIT License](LICENSE)
+*   本专案核心下载功能使用 [bili_novel_packer](https://github.com/Montaro2017/bili_novel_packer)
+*   本工具仅供学习与交流使用，请勿用于商业用途或大量恶意抓取
 
-```powershell
-python -m unittest discover -s tests -v
+## 下载器核心更新
+
+如果未来遇到可用的更新版本：
+
+1. 前往核心下载器原作者的 GitHub：[Montaro2017/bili_novel_packer](https://github.com/Montaro2017/bili_novel_packer/releases)
+2. 下载最新版本的 `bili_novel_packer-...-windows.exe`
+3. 移除旧版本下载器，将下载的新档案移至本工具 `tools` 资料夹内即可正常运作
+
+---
+
+## 原始码
+
+如想修改程式码，请参考以下说明：
+
+### 环境准备
+
+1. 建议使用 Python 3.10 以上
+2. 安装必要的套件：
+   ```bash
+   pip install -r requirements.txt
+   ```
+
+### 直接执行脚本
+
+在专案根目录下执行：
+```bash
+python BiliNovelDownloader.py
 ```
 
-Python 测试覆盖单卷/多卷/合并、标题选项、取消、停滞、失败完成标记、代理设置和 EPUB 简体转换。原版核心通过发布文件哈希校验，GUI 测试模拟原版无换行提示与持续等待下一本的行为。Python 测试产物保留在被 Git 忽略的 `.test-runs` 目录。
+### 打包成 exe
 
-v1.6.2 实际回归：上游未经修改的 v0.2.49 Windows 核心下载《无职转生～蛇足篇～》第 1 卷，约 214 秒完成，GUI 适配层识别下一次链接提示、校验 EPUB 并结束进程，没有等待 15 分钟。核心使用当时机器的网络环境，未注入 GUI 代理策略。另有 21 项 Python 测试通过。这是当次验证结果，不保证站点改版后始终可用。
-
-## 授权
-
-应用上游：allen3206/BiliNovelDownloader，MIT。
-
-下载核心上游：Montaro2017/bili_novel_packer 0.2.49，MIT。当前发行包使用上游未修改的 Windows EXE。
-
-请保留 `LICENSE`、`NOTICES.txt` 和第三方授权文件。程序只提供下载及本地排版功能，不随软件分发小说内容。
+```bash
+pyinstaller BiliNovelDownloader.spec
+```
