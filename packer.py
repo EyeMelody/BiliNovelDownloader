@@ -8,7 +8,12 @@ import psutil
 def find_downloader_exe(base_path: Path) -> Optional[Path]:
     """动态寻找 tools 目录下的下载器执行档"""
     tools_dir = base_path / 'tools'
-    exe_paths = list(tools_dir.glob('bili_novel_packer*-gui.exe'))
+    exe_paths = [p for p in tools_dir.glob('bili_novel_packer*.exe') if '-gui' not in p.name.lower()]
+    def version(path):
+        import re
+        found = re.search(r'packer-(\d+(?:\.\d+)+)', path.name)
+        return tuple(map(int, found.group(1).split('.'))) if found else ()
+    exe_paths.sort(key=version, reverse=True)
     if exe_paths:
         return exe_paths[0]
     return None

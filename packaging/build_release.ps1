@@ -15,7 +15,7 @@ $name  = "BiliNovelDownloader-$version-windows-x64"
 $stage = Join-Path $repo $name
 $zip   = "$stage.zip"
 
-$packer = @(Get-ChildItem (Join-Path $repo 'tools') -Filter 'bili_novel_packer*.exe')
+$packer = @(Get-ChildItem (Join-Path $repo 'tools') -Filter 'bili_novel_packer*.exe' | Where-Object { $_.Name -notlike '*-gui.exe' })
 if ($packer.Count -ne 1) { throw "tools\ 内应恰有一颗 bili_novel_packer exe，目前有 $($packer.Count) 颗" }
 
 if (Test-Path $stage) { throw "输出目录已存在，请先另行保存或选择新的版本号：$stage" }

@@ -1,9 +1,8 @@
-# 核心下载器目录
+# 原版下载核心
 
-请保持本目录与 BiliNovelDownloader.exe 在同一级目录。
-
-本分支必须使用随安装包提供的 bili_novel_packer-0.2.49-gui.exe。它支持单任务退出和显式 HTTP 代理，不能直接替换成上游的交互版核心。
-
-从源代码运行时，请按照项目 README 使用 Dart 3.13.5 编译 vendor/packer/bin/gui.dart，并将产物放到本目录。可执行文件不提交到 Git 仓库。
-
-核心基于 Montaro2017/bili_novel_packer（MIT），来源与修改见 vendor/packer/UPSTREAM.md，许可证见 LICENSE-bili_novel_packer.txt。
+当前发行包使用 Montaro2017/bili_novel_packer 的原版 Windows EXE，未经修改。
+核心更新检查使用上游发布页：https://github.com/Montaro2017/bili_novel_packer/releases
+将新版 bili_novel_packer-版本-x86_64-windows.exe 放在本目录，GUI 会优先选择最高版本。不要使用历史的 *-gui.exe。
+GUI 按提示填写选项，并在任务完成后结束等待下一本的进程。上游若改变交互提示，GUI 可能需要适配。
+核心保留自身网络行为，不受 GUI 的 HTTP 代理选项控制。
+许可证见 LICENSE-bili_novel_packer.txt。

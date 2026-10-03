@@ -243,7 +243,7 @@ class Application(tk.Tk):
         ttk.Checkbutton(frm, text="启用代理", variable=enabled).pack(anchor="w")
         ttk.Label(frm, text="HTTP / 混合代理地址").pack(anchor="w", pady=(12, 4))
         ttk.Entry(frm, textvariable=address, width=48).pack(fill="x")
-        ttk.Label(frm, text="例如 http://127.0.0.1:7890\n作用于书籍预览、正文、插图和更新检查。\n关闭时直接连接；暂不支持 SOCKS、账号密码代理。", wraplength=420).pack(anchor="w", pady=10)
+        ttk.Label(frm, text="例如 http://127.0.0.1:7890\n作用于书籍预览、目录、封面和更新检查，默认关闭。\n原版核心下载沿用其自身网络行为；需要代理时，\n请使用你能正常运行原版核心的网络或 TUN 环境。\n暂不支持 SOCKS、账号密码代理。", wraplength=420).pack(anchor="w", pady=10)
         result = tk.StringVar()
         ttk.Label(frm, textvariable=result, wraplength=420).pack(anchor="w")
         buttons = ttk.Frame(frm)
@@ -399,7 +399,7 @@ class Application(tk.Tk):
         local_packer = get_local_packer_version(find_downloader_exe(get_base_path()))
         self._upd_labels = {}
         rows = (('app', '主程序（本分支）', APP_VERSION),
-                ('packer', '核心下载器（GUI 版）', f"v{local_packer}" if local_packer else "无法判定"))
+                ('packer', '核心下载器（原版）', f"v{local_packer}" if local_packer else "无法判定"))
         for i, (key, name, current) in enumerate(rows):
             base = i * 2
             pad_top = (0, 0) if i == 0 else (10, 0)
@@ -419,7 +419,7 @@ class Application(tk.Tk):
         self._upd_warn.grid_remove()
 
         btnf = ttk.Frame(frm)
-        ttk.Label(frm, text="核心显示上游版本供参考；代理和单任务修复需要 GUI 版核心。\n请下载本分支整包更新，不要用上游交互版直接覆盖核心。",
+        ttk.Label(frm, text="核心直接使用上游原版。可从上游发布页下载 Windows 核心，\n放入 tools 目录；程序优先选择版本号最高的原版核心。",
                   wraplength=440, foreground="gray").grid(row=5, column=0, columnspan=3, sticky="w", pady=(10, 0))
         btnf.grid(row=6, column=0, columnspan=3, sticky="e", pady=(15, 0))
         self._upd_recheck_btn = ttk.Button(btnf, text="重新检查",
@@ -1196,11 +1196,9 @@ class Application(tk.Tk):
 
     def _run_downloader_process(self, exe_path: Path, url: str, o1: str, o2: str, o3: str, cwd: str) -> bool:
         try:
-            settings = load_settings()
             job = {'url': normalize_novel_url(url), 'volumes': parse_volumes(o1),
-                   'merge': o2 == '1', 'add_titles': o3 == '1',
-                   'proxy': settings['proxy_url'] if settings['proxy_enabled'] else None}
-            logging.info("正在启动单次下载任务（%s）", job['proxy'] or '直连')
+                   'merge': o2 == '1', 'add_titles': o3 == '1'}
+            logging.info("正在启动原版核心；核心使用其自身网络环境，GUI 负责交互和完成校验。")
             def started(process):
                 self.current_process = process
             def line(text):
@@ -1214,7 +1212,7 @@ class Application(tk.Tk):
             run_job([str(exe_path)], cwd, job, self.cancel_event, started, line, tick,
                     STALL_TIMEOUT_SECONDS, DOWNLOAD_TIMEOUT_SECONDS)
             self._pg_complete = True
-            logging.info("核心正常退出，EPUB 检查通过，开始简繁转换。")
+            logging.info("原版核心已完成打包，GUI 已结束等待下一本的进程；EPUB 检查通过，开始简繁转换。")
             return True
         except DownloadError as e:
             self._abort_reason = e.reason

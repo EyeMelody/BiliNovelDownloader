@@ -6,7 +6,7 @@ on:
   workflow_dispatch:
 
 env:
-  PACKER_VERSION: "0.2.49-gui"
+  PACKER_VERSION: "0.2.49"
 
 permissions:
   contents: write
@@ -35,21 +35,16 @@ jobs:
           python -m pip install --upgrade pip
           pip install -r requirements.txt pyinstaller==6.21.0
 
-      - uses: dart-lang/setup-dart@v1
-        with:
-          sdk: '3.13.5'
-
       - name: 测试 Python
         run: python -m unittest discover -s tests -v
 
-      - name: 构建配套核心
+      - name: 下载并校验上游原版核心
+        env:
+          GH_TOKEN: ${{ github.token }}
         run: |
-          Push-Location vendor/packer
-          dart pub get --enforce-lockfile
-          dart analyze bin/gui.dart lib/gui_proxy.dart
-          dart test test/gui_proxy_test.dart
-          dart compile exe bin/gui.dart -o ../../tools/bili_novel_packer-0.2.49-gui.exe
-          Pop-Location
+          gh release download "v${{ env.PACKER_VERSION }}" --repo Montaro2017/bili_novel_packer --pattern '*x86_64-windows.exe' --dir tools
+          $hash = (Get-FileHash "tools/bili_novel_packer-${{ env.PACKER_VERSION }}-x86_64-windows.exe" -Algorithm SHA256).Hash
+          if ($hash -ne 'c78c4dc58ba88610c65dcd44c817e3d93b783296340c1b847835acf8e56bb4a3') { throw '核心校验失败' }
 
       - name: 建置與打包
         run: ./packaging/build_release.ps1
@@ -74,4 +69,4 @@ jobs:
         run: |
           gh release create "${{ github.ref_name }}" "${{ steps.out.outputs.zip }}" `
             --draft --title "${{ github.ref_name }}" `
-            --notes "简体界面、HTTP 代理和单次任务退出修复。包含配套核心 v${{ env.PACKER_VERSION }}，请整包更新。"
+            --notes "简体界面、GUI 代理设置和交互适配。包含上游原版核心 v${{ env.PACKER_VERSION }}，请整包更新。"

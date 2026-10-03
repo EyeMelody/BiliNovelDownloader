@@ -17,8 +17,9 @@ class DownloadTests(unittest.TestCase):
                   'merge':False,'add_titles':True,'proxy':None}
 
     def run_core(self, **changes):
+        mode=changes.pop("test_mode", "ok")
         job=dict(self.job, **changes)
-        return run_job(self.command,self.work,job,threading.Event(),stall_seconds=.5,timeout_seconds=4)
+        return run_job([*self.command, mode],self.work,job,threading.Event(),stall_seconds=.5,timeout_seconds=4)
 
     def test_single_volume_title_flag_not_shifted(self):
         self.assertEqual(len(self.run_core()),1)
@@ -31,6 +32,15 @@ class DownloadTests(unittest.TestCase):
 
     def test_merged_volume(self):
         self.assertEqual(len(self.run_core(volumes=[1,3],merge=True)),1)
+
+    def test_all_volumes(self):
+        self.assertEqual(len(self.run_core(volumes=None)),3)
+
+    def test_partial_not_success(self):
+        with self.assertRaises(DownloadError): self.run_core(volumes=[1,2],test_mode="partial")
+
+    def test_file_without_next_prompt_not_success(self):
+        with self.assertRaises(DownloadError): self.run_core(test_mode="exit_after_file")
 
     def test_stall_still_detected(self):
         with self.assertRaises(DownloadError) as e:self.run_core(test_mode='stall')
@@ -68,8 +78,7 @@ class DownloadTests(unittest.TestCase):
             with make_session(dict(settings,proxy_enabled=False)) as session:
                 self.assertEqual(session.proxies,{})
                 self.assertFalse(session.trust_env)
-        self.run_core(proxy=settings['proxy_url'])
-        self.assertEqual(json.loads((self.work/'received.json').read_text())['proxy'],settings['proxy_url'])
+
 
     def test_proxy_validation(self):
         self.assertEqual(validate_proxy('127.0.0.1:7890'),'http://127.0.0.1:7890')

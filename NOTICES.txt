@@ -1,6 +1,6 @@
 本软件基于 allen3206/BiliNovelDownloader（MIT License）。
 小说下载功能基于 Montaro2017/bili_novel_packer 0.2.49（MIT License）。
-本分支增加了单任务 JSON 入口和统一 HTTP 代理支持，保留上游抓取、排版实现。
+v1.6.2 起使用上游未经修改的原版核心。GUI 提供简体界面、自身请求的 HTTP 代理设置及交互适配。
 
 授权全文见 LICENSE.txt 和 tools/LICENSE-bili_novel_packer.txt。
 
